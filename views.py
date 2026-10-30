@@ -16,18 +16,21 @@ def course_list(request):
 def course_details(request, course_id):
     course = get_object_or_404(Course, pk=course_id)
     enrollment = None
-    submission_exists = False
+    latest_submission = None
     if request.user.is_authenticated:
         enrollment = Enrollment.objects.filter(user=request.user, course=course).first()
         if enrollment is not None:
-            submission_exists = Submission.objects.filter(enrollment=enrollment).exists()
+            latest_submission = Submission.objects.filter(
+                enrollment=enrollment
+            ).first()
     return render(
         request,
         "onlinecourse/course_details_bootstrap.html",
         {
             "course": course,
             "enrollment": enrollment,
-            "submission_exists": submission_exists,
+            "submission_exists": latest_submission is not None,
+            "latest_submission": latest_submission,
         },
     )
 
@@ -65,17 +68,21 @@ def submit(request, course_id):
 
     submission = Submission.objects.create(enrollment=enrollment)
     submission.choices.set(valid_ids)
-    return redirect("onlinecourse:show_exam_result", course_id=course.pk)
+    return redirect(
+        "onlinecourse:show_exam_result",
+        course_id=course.pk,
+        submission_id=submission.pk,
+    )
 
 
 @login_required
-def show_exam_result(request, course_id):
+def show_exam_result(request, course_id, submission_id):
     course = get_object_or_404(Course, pk=course_id)
     enrollment = Enrollment.objects.filter(user=request.user, course=course).first()
     if enrollment is None:
         raise PermissionDenied("You must be enrolled in this course to view exam results.")
     submission = (
-        Submission.objects.filter(enrollment=enrollment)
+        Submission.objects.filter(enrollment=enrollment, pk=submission_id)
         .prefetch_related("choices", "choices__question", "choices__question__choice_set")
         .first()
     )
@@ -113,6 +120,8 @@ def show_exam_result(request, course_id):
             "course": course,
             "submission": submission,
             "questions": questions,
+            "grade": score,
+            "possible": total_possible,
             "score": score,
             "total_possible": total_possible,
             "percentage": percentage,
