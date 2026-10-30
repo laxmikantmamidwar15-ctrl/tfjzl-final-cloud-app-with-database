@@ -1,0 +1,85 @@
+{% extends "onlinecourse/base.html" %}
+{% block title %}{{ course.name }} | Northstar Learning{% endblock %}
+{% block content %}
+<section class="course-hero py-5">
+  <div class="container">
+    <a class="small text-decoration-none text-secondary" href="{% url 'onlinecourse:course_list' %}">← All courses</a>
+    <div class="row align-items-center mt-3 g-4">
+      <div class="col-lg-8">
+        <span class="eyebrow">COURSE OVERVIEW</span>
+        <h1 class="display-6 fw-bold mt-2">{{ course.name }}</h1>
+        <p class="lead text-secondary mb-0">{{ course.description }}</p>
+      </div>
+      <div class="col-lg-4">
+        <div class="course-meta-card">
+          <div class="small text-secondary">PUBLISHED</div>
+          <div class="fw-semibold">{{ course.pub_date|date:"F j, Y" }}</div>
+          <div class="small text-secondary mt-3">COURSE CONTENT</div>
+          <div class="fw-semibold">{{ course.lesson_set.count }} lesson{{ course.lesson_set.count|pluralize }} · {{ course.question_set.count }} exam question{{ course.question_set.count|pluralize }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="container py-5">
+  <div class="row g-5">
+    <div class="col-lg-7">
+      <div class="section-heading mb-4"><span class="eyebrow">LEARNING PATH</span><h2 class="h3 fw-bold mt-1">Course lessons</h2></div>
+      <div class="lesson-list">
+        {% for lesson in course.lesson_set.all %}
+          <article class="lesson-item">
+            <span class="lesson-number">{{ forloop.counter|stringformat:"02d" }}</span>
+            <div><h3 class="h6 fw-bold mb-1">{{ lesson.title }}</h3><p class="text-secondary mb-0">{{ lesson.content }}</p></div>
+          </article>
+        {% empty %}
+          <div class="empty-state p-4 text-secondary">No lessons have been added to this course yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <section class="exam-card">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <div><span class="eyebrow">KNOWLEDGE CHECK</span><h2 class="h4 fw-bold mt-1">Course examination</h2></div>
+          <span class="exam-icon" aria-hidden="true">✓</span>
+        </div>
+        {% if not user.is_authenticated %}
+          <p class="text-secondary">Log in to enroll and take this course examination.</p>
+          <a class="btn btn-primary w-100" href="{% url 'login' %}?next={{ request.path }}">Log in to continue</a>
+        {% elif not enrollment %}
+          <p class="text-secondary">Enroll in this course to unlock the exam and save your results.</p>
+          <form method="post" action="{% url 'onlinecourse:enroll' course.id %}">
+            {% csrf_token %}
+            <button class="btn btn-primary w-100" type="submit">Enroll in course</button>
+          </form>
+        {% else %}
+          <p class="text-secondary">Select the best answer for each question. Some questions may have more than one correct answer.</p>
+          <form method="post" action="{% url 'onlinecourse:submit' course.id %}">
+            {% csrf_token %}
+            {% for question in course.question_set.all %}
+              <fieldset class="question-block">
+                <legend class="h6 fw-semibold"><span class="text-primary">{{ forloop.counter }}.</span> {{ question.content }} <span class="badge text-bg-light">{{ question.grade }} pts</span></legend>
+                {% for choice in question.choice_set.all %}
+                  <label class="choice-option">
+                    <input class="form-check-input mt-0" type="checkbox" name="choice_ids" value="{{ choice.id }}">
+                    <span>{{ choice.content }}</span>
+                  </label>
+                {% empty %}
+                  <p class="small text-secondary">Choices have not been added yet.</p>
+                {% endfor %}
+              </fieldset>
+            {% empty %}
+              <div class="alert alert-info">No exam questions have been added yet.</div>
+            {% endfor %}
+            {% if course.question_set.exists %}
+              <button class="btn btn-primary w-100 mt-2" type="submit">Submit examination</button>
+            {% endif %}
+          </form>
+          {% if submission_exists %}
+            <a class="btn btn-outline-primary w-100 mt-2" href="{% url 'onlinecourse:show_exam_result' course.id %}">View latest result</a>
+          {% endif %}
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}
