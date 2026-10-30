@@ -14,6 +14,34 @@ class Course(models.Model):
         return self.name
 
 
+class Instructor(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="instructor_profile",
+    )
+
+    class Meta:
+        verbose_name_plural = "Instructors"
+
+    def __str__(self):
+        return str(self.user)
+
+
+class Learner(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="learner_profile",
+    )
+
+    class Meta:
+        verbose_name_plural = "Learners"
+
+    def __str__(self):
+        return str(self.user)
+
+
 class Lesson(models.Model):
     title = models.CharField(max_length=100)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
@@ -52,11 +80,11 @@ class Enrollment(models.Model):
 
 class Question(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    content = models.CharField(max_length=500)
-    grade = models.IntegerField()
+    question_text = models.CharField(max_length=500)
+    grade = models.IntegerField(default=0)
 
     def __str__(self):
-        return self.content
+        return self.question_text
 
     def is_get_score(self, selected_ids):
         try:
@@ -71,11 +99,11 @@ class Question(models.Model):
 
 class Choice(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    content = models.CharField(max_length=500)
+    choice_text = models.CharField(max_length=500)
     is_correct = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.content
+        return self.choice_text
 
 
 class Submission(models.Model):
@@ -87,4 +115,7 @@ class Submission(models.Model):
         ordering = ["-created_at", "-id"]
 
     def __str__(self):
-        return f"Submission by {self.enrollment.user} for {self.enrollment.course}"
+        return (
+            f"{self.enrollment.user.username} - "
+            f"{self.enrollment.course.name}"
+        )
